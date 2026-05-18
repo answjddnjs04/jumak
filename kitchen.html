@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>주방 관리 - KDS</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+    /* 상단 요약 */
+    .summary-bar {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      flex: 1;
+      text-align: center;
+    }
+    .summary-card .num { font-size: 28px; font-weight: 800; }
+    .summary-card .label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .num.orange { color: var(--primary); }
+    .num.green { color: var(--green); }
+    .num.red { color: var(--red); }
+
+    /* 주문 카드 그리드 */
+    .orders-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .order-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      transition: border-color 0.2s;
+    }
+    .order-card.cooking { border-color: var(--yellow); }
+    .order-card.all-served { border-color: var(--green); }
+
+    .order-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .order-card-header .table-label {
+      font-size: 20px;
+      font-weight: 800;
+    }
+    .order-card-header .elapsed {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* 메뉴 체크리스트 */
+    .menu-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1.5px solid transparent;
+    }
+    .menu-item:hover { border-color: var(--primary); }
+    .menu-item.served {
+      background: rgba(34,197,94,0.08);
+      border-color: rgba(34,197,94,0.3);
+    }
+    .menu-item .check {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    .menu-item.served .check {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .menu-item .menu-name { flex: 1; font-size: 15px; font-weight: 500; }
+    .menu-item.served .menu-name {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+    .menu-item .qty {
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* 진행 바 */
+    .progress-bar {
+      background: var(--surface2);
+      border-radius: 10px;
+      height: 8px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 10px;
+      transition: width 0.4s ease;
+    }
+
+    /* 완료 버튼 */
+    .complete-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    /* 테이블 관리 섹션 */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    .table-mgmt-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 12px;
+    }
+    .table-mgmt-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+    .table-mgmt-card.occupied { border-color: rgba(239,68,68,0.4); }
+    .table-mgmt-card .tnum { font-size: 18px; font-weight: 800; margin-bottom: 8px; }
+    .table-mgmt-card .ttimer { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; margin: 8px 0; }
+    .occupied .ttimer { color: var(--red); }
+    .table-mgmt-card .action-btns { display: flex; gap: 6px; margin-top: 8px; }
+    .action-btns .btn { flex: 1; padding: 8px 4px; font-size: 12px; }
+
+    /* 웨이팅 관리 */
+    .waiting-mgmt-list { display: flex; flex-direction: column; gap: 8px; }
+    .waiting-mgmt-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .waiting-mgmt-item .rank { font-size: 20px; font-weight: 800; color: var(--primary); width: 28px; }
+    .waiting-mgmt-item .info { flex: 1; }
+    .waiting-mgmt-item .info .phone { font-size: 15px; font-weight: 600; }
+    .waiting-mgmt-item .info .sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .waiting-mgmt-item .actions { display: flex; gap: 8px; }
+    .waiting-mgmt-item .actions .btn { padding: 8px 14px; font-size: 13px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🍳 주방 관리 (KDS)</h1>
+  <div class="nav-links">
+    <a href="index.html">👥 고객 화면</a>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- 요약 -->
+  <div class="summary-bar">
+    <div class="summary-card"><div class="num orange" id="cooking-count">0</div><div class="label">조리 중</div></div>
+    <div class="summary-card"><div class="num green" id="served-count">0</div><div class="label">서빙 완료</div></div>
+    <div class="summary-card"><div class="num red" id="table-count">0</div><div class="label">이용 중 테이블</div></div>
+    <div class="summary-card"><div class="num" id="waiting-count2">0</div><div class="label">대기팀</div></div>
+  </div>
+
+  <!-- 주문 카드 -->
+  <div class="section-title">현재 주문 현황</div>
+  <div class="orders-grid" id="orders-grid">
+    <div class="empty-state">주문이 없습니다.</div>
+  </div>
+
+  <hr class="section-divider">
+
+  <!-- 테이블 관리 -->
+  <div class="section-title">테이블 관리</div>
+  <div style="margin-bottom:12px; display:flex; gap:10px;">
+    <button class="btn btn-primary" onclick="openAddOrderModal()">+ 주문 추가</button>
+    <button class="btn btn-outline" onclick="loadAll()">🔄 새로고침</button>
+  </div>
+  <div class="table-mgmt-grid" id="table-mgmt-grid"></div>
+
+  <hr class="section-divider">
+
+  <!-- 웨이팅 관리 -->
+  <div class="section-title">웨이팅 관리</div>
+  <div class="waiting-mgmt-list" id="waiting-mgmt-list">
+    <div class="empty-state">대기 중인 팀이 없습니다.</div>
+  </div>
+
+</div>
+
+<!-- 주문 추가 모달 -->
+<div class="modal-overlay" id="add-order-modal">
+  <div class="modal">
+    <h2>📋 주문 추가</h2>
+    <p>테이블 번호와 메뉴를 입력하세요.</p>
+    <select id="order-table-select" style="width:100%; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:14px; font-size:15px; color:var(--text); margin-bottom:12px; outline:none;">
+    </select>
+    <div id="menu-inputs">
+      <div class="menu-input-row" style="display:flex; gap:8px; margin-bottom:8px;">
+        <input type="text" placeholder="메뉴 이름" style="flex:2; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-size:14px; color:var(--text); outline:none;">
+        <input type="number" placeholder="수량" min="1" value="1" style="flex:0.6; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-size:14px; color:var(--text); outline:none;">
+      </div>
+    </div>
+    <button class="btn btn-outline" style="width:100%; margin-bottom:16px;" onclick="addMenuRow()">+ 메뉴 추가</button>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeAddOrderModal()">취소</button>
+      <button class="btn btn-primary" onclick="submitOrder()">주문 등록</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="config.js"></script>
+<script>
+  let orders = []
+  let tables = []
+  let waitings = []
+  let timerInterval = null
+
+  async function loadAll() {
+    await Promise.all([loadOrders(), loadTables(), loadWaitings()])
+    startTimers()
+  }
+
+  async function loadOrders() {
+    const { data, error } = await db.from('orders').select('*')
+      .in('status', ['cooking', 'partial'])
+      .order('created_at')
+    if (error) { console.error(error); return }
+    orders = data || []
+    renderOrders()
+    updateSummary()
+  }
+
+  async function loadTables() {
+    const { data, error } = await db.from('tables').select('*').order('id')
+    if (error) { console.error(error); return }
+    tables = data || []
+    renderTableMgmt()
+    updateSummary()
+    populateTableSelect()
+  }
+
+  async function loadWaitings() {
+    const { data, error } = await db.from('waitings')
+      .select('*').eq('status', 'waiting').order('created_at')
+    if (error) { console.error(error); return }
+    waitings = data || []
+    renderWaitingMgmt()
+    updateSummary()
+  }
+
+  function updateSummary() {
+    document.getElementById('cooking-count').textContent = orders.filter(o => o.status === 'cooking').length
+    document.getElementById('served-count').textContent = orders.filter(o => o.status === 'partial').length
+    document.getElementById('table-count').textContent = tables.filter(t => t.status === 'occupied').length
+    document.getElementById('waiting-count2').textContent = waitings.length
+  }
+
+  // 주문 카드 렌더링
+  function renderOrders() {
+    const grid = document.getElementById('orders-grid')
+    if (orders.length === 0) {
+      grid.innerHTML = '<div class="empty-state">현재 조리 중인 주문이 없습니다.</div>'
+      return
+    }
+    grid.innerHTML = orders.map(order => {
+      const items = order.items || []
+      const servedItems = order.served_items || {}
+      const servedCount = items.filter(item => servedItems[item.name]).length
+      const total = items.length
+      const allServed = servedCount === total
+      const pct = total > 0 ? Math.round(servedCount / total * 100) : 0
+      const elapsed = Math.floor((new Date() - new Date(order.created_at)) / 60000)
+
+      return `
+        <div class="order-card ${allServed ? 'all-served' : 'cooking'}" id="order-${order.id}">
+          <div class="order-card-header">
+            <div class="table-label">🪑 ${order.table_number}번 테이블</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="badge ${allServed ? 'badge-green' : 'badge-yellow'}">${allServed ? '서빙완료' : '조리중'}</span>
+              <span class="elapsed">${elapsed}분 전</span>
+            </div>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style="width:${pct}%"></div>
+          </div>
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">${servedCount}/${total} 서빙 완료</div>
+          <div class="menu-list">
+            ${items.map(item => `
+              <div class="menu-item ${servedItems[item.name] ? 'served' : ''}" onclick="toggleServed('${order.id}', '${item.name}')">
+                <div class="check">${servedItems[item.name] ? '✓' : ''}</div>
+                <div class="menu-name">${item.name}</div>
+                <div class="qty">×${item.qty}</div>
+              </div>
+            `).join('')}
+          </div>
+          ${allServed ? `
+            <button class="btn btn-green complete-btn" onclick="completeOrder('${order.id}', ${order.table_id})">
+              ✅ 다 나간 테이블 확인 → 타이머 시작
+            </button>
+          ` : ''}
+        </div>
+      `
+    }).join('')
+  }
+
+  // 메뉴 서빙 토글
+  async function toggleServed(orderId, menuName) {
+    const order = orders.find(o => o.id === orderId)
+    if (!order) return
+    const servedItems = { ...(order.served_items || {}) }
+    servedItems[menuName] = !servedItems[menuName]
+
+    const allServed = (order.items || []).every(item => servedItems[item.name])
+    const newStatus = allServed ? 'partial' : 'cooking'
+
+    const { error } = await db.from('orders').update({
+      served_items: servedItems,
+      status: newStatus
+    }).eq('id', orderId)
+
+    if (error) { console.error(error); return }
+    await loadOrders()
+  }
+
+  // 주문 완료 & 타이머 시작
+  async function completeOrder(orderId, tableId) {
+    const timerEnd = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+
+    const [r1, r2] = await Promise.all([
+      db.from('orders').update({ status: 'served' }).eq('id', orderId),
+      db.from('tables').update({ status: 'occupied', timer_end_at: timerEnd }).eq('id', tableId)
+    ])
+    if (r1.error || r2.error) { showToast('오류가 발생했습니다.'); return }
+    showToast('⏱️ 2시간 타이머가 시작되었습니다!')
+    await loadAll()
+  }
+
+  // 테이블 관리 렌더링
+  function renderTableMgmt() {
+    const grid = document.getElementById('table-mgmt-grid')
+    grid.innerHTML = tables.map(t => {
+      const isOccupied = t.status === 'occupied'
+      const remaining = t.timer_end_at
+        ? Math.max(0, Math.floor((new Date(t.timer_end_at) - new Date()) / 1000))
+        : null
+
+      return `
+        <div class="table-mgmt-card ${isOccupied ? 'occupied' : ''}">
+          <div class="tnum">${t.table_number}번</div>
+          <span class="badge ${isOccupied ? 'badge-red' : 'badge-green'}">${isOccupied ? '이용중' : '비어있음'}</span>
+          ${isOccupied && remaining !== null
+            ? `<div class="ttimer" data-end="${t.timer_end_at}">${formatTime(remaining)}</div>`
+            : `<div class="ttimer" style="color:var(--text-muted); font-size:14px; margin:12px 0">-</div>`
+          }
+          <div class="action-btns">
+            ${isOccupied
+              ? `<button class="btn btn-outline" onclick="clearTable(${t.id})">퇴실</button>`
+              : `<button class="btn btn-primary" onclick="seatTable(${t.id})">착석</button>`
+            }
+          </div>
+        </div>
+      `
+    }).join('')
+  }
+
+  // 테이블 착석/퇴실
+  async function seatTable(id) {
+    await db.from('tables').update({ status: 'occupied', timer_end_at: null }).eq('id', id)
+    await loadTables()
+  }
+  async function clearTable(id) {
+    if (!confirm('테이블을 퇴실 처리하시겠습니까?')) return
+    await db.from('tables').update({ status: 'empty', timer_end_at: null }).eq('id', id)
+    await loadTables()
+  }
+
+  // 웨이팅 관리 렌더링
+  function renderWaitingMgmt() {
+    const container = document.getElementById('waiting-mgmt-list')
+    if (waitings.length === 0) {
+      container.innerHTML = '<div class="empty-state">대기 중인 팀이 없습니다.</div>'
+      return
+    }
+    container.innerHTML = waitings.map((w, i) => `
+      <div class="waiting-mgmt-item">
+        <div class="rank">${i + 1}</div>
+        <div class="info">
+          <div class="phone">${w.phone}</div>
+          <div class="sub">${timeAgo(w.created_at)} 신청</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="callWaiting('${w.id}')">호출</button>
+          <button class="btn btn-outline" onclick="cancelWaiting('${w.id}')">취소</button>
+        </div>
+      </div>
+    `).join('')
+  }
+
+  async function callWaiting(id) {
+    await db.from('waitings').update({ status: 'called' }).eq('id', id)
+    showToast('📞 호출 처리되었습니다.')
+    await loadWaitings()
+  }
+  async function cancelWaiting(id) {
+    if (!confirm('웨이팅을 취소하시겠습니까?')) return
+    await db.from('waitings').update({ status: 'cancelled' }).eq('id', id)
+    await loadWaitings()
+  }
+
+  // 주문 추가 모달
+  function populateTableSelect() {
+    const sel = document.getElementById('order-table-select')
+    sel.innerHTML = tables.map(t => `<option value="${t.id}" data-num="${t.table_number}">${t.table_number}번 테이블</option>`).join('')
+  }
+  function openAddOrderModal() { document.getElementById('add-order-modal').classList.add('active') }
+  function closeAddOrderModal() { document.getElementById('add-order-modal').classList.remove('active') }
+  function addMenuRow() {
+    const div = document.createElement('div')
+    div.className = 'menu-input-row'
+    div.style = 'display:flex; gap:8px; margin-bottom:8px;'
+    div.innerHTML = `
+      <input type="text" placeholder="메뉴 이름" style="flex:2; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-size:14px; color:var(--text); outline:none;">
+      <input type="number" placeholder="수량" min="1" value="1" style="flex:0.6; background:var(--surface2); border:1.5px solid var(--border); border-radius:10px; padding:12px; font-size:14px; color:var(--text); outline:none;">
+    `
+    document.getElementById('menu-inputs').appendChild(div)
+  }
+
+  async function submitOrder() {
+    const sel = document.getElementById('order-table-select')
+    const tableId = parseInt(sel.value)
+    const tableNum = parseInt(sel.selectedOptions[0].dataset.num)
+    const rows = document.querySelectorAll('.menu-input-row')
+    const items = []
+    rows.forEach(row => {
+      const inputs = row.querySelectorAll('input')
+      const name = inputs[0].value.trim()
+      const qty = parseInt(inputs[1].value) || 1
+      if (name) items.push({ name, qty })
+    })
+    if (items.length === 0) { showToast('메뉴를 1개 이상 입력해주세요.'); return }
+
+    const { error } = await db.from('orders').insert({
+      table_id: tableId,
+      table_number: tableNum,
+      items: items,
+      served_items: {},
+      status: 'cooking'
+    })
+    if (error) { showToast('주문 등록 오류: ' + error.message); return }
+    closeAddOrderModal()
+    showToast('✅ 주문이 등록되었습니다!')
+    await loadAll()
+  }
+
+  // 타이머
+  function startTimers() {
+    if (timerInterval) clearInterval(timerInterval)
+    timerInterval = setInterval(() => {
+      document.querySelectorAll('.ttimer[data-end]').forEach(el => {
+        const remaining = Math.max(0, Math.floor((new Date(el.dataset.end) - new Date()) / 1000))
+        el.textContent = formatTime(remaining)
+        if (remaining === 0) el.style.color = 'var(--yellow)'
+      })
+    }, 1000)
+  }
+
+  function formatTime(sec) {
+    if (sec <= 0) return '00:00'
+    const h = Math.floor(sec / 3600)
+    const m = Math.floor((sec % 3600) / 60)
+    const s = sec % 60
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  }
+
+  function timeAgo(dateStr) {
+    const mins = Math.floor((new Date() - new Date(dateStr)) / 60000)
+    if (mins < 1) return '방금'
+    return `${mins}분 전`
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast')
+    t.textContent = msg
+    t.classList.add('show')
+    setTimeout(() => t.classList.remove('show'), 3000)
+  }
+
+  // 실시간 구독
+  db.channel('kitchen-changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, loadAll)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, loadAll)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'waitings' }, loadWaitings)
+    .subscribe()
+
+  loadAll()
+</script>
+</body>
+</html>
