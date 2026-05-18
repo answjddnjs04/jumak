@@ -1,5 +1,4 @@
 const SUPABASE_URL = 'https://menfxgrghhlosedmsmzk.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1lbmZ4Z3JnaGhsb3NlZG1zbXprIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNzA3NTAsImV4cCI6MjA5NDY0Njc1MH0.SOc31Jmm8TGADEdD8ZqiVAC6MuhnsSO5aiPE5S754UA'
-
 const { createClient } = supabase
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
