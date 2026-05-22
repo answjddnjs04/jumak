@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>QR 코드 - 路寶官</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#fff; font-family:'Apple SD Gothic Neo',sans-serif; padding:24px; }
+    .top { text-align:center; margin-bottom:32px; }
+    .top h1 { font-size:24px; font-weight:900; margin-bottom:8px; }
+    .top p { font-size:13px; color:#666; }
+    .url-setting { background:#f5f5f5; border:1px solid #ddd; border-radius:10px; padding:16px 20px; margin-bottom:32px; max-width:600px; margin-left:auto; margin-right:auto; }
+    .url-setting label { font-size:13px; font-weight:700; color:#333; display:block; margin-bottom:8px; }
+    .url-setting input { width:100%; padding:10px 12px; border:1.5px solid #ddd; border-radius:8px; font-size:14px; outline:none; }
+    .url-setting input:focus { border-color:#c0392b; }
+    .url-setting .hint { font-size:12px; color:#888; margin-top:6px; }
+    .gen-btn { display:block; margin:0 auto 32px; padding:12px 32px; background:#c0392b; color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+    .grid { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; max-width:1000px; margin:0 auto; }
+    @media print { .top,.url-setting,.gen-btn{display:none;} .grid{max-width:100%;} }
+    .qr-card { background:#fff; border:1.5px solid #e0e0e0; border-radius:14px; padding:16px 12px; text-align:center; page-break-inside:avoid; }
+    .qr-card .qr-box { display:flex; justify-content:center; margin-bottom:10px; }
+    .qr-card .qr-box canvas, .qr-card .qr-box img { border-radius:8px; }
+    .qr-card .table-name { font-size:15px; font-weight:800; color:#1a1a1a; margin-bottom:2px; }
+    .qr-card .table-sub { font-size:11px; color:#888; }
+    .print-btn { display:block; margin:0 auto 24px; padding:12px 32px; background:#333; color:white; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; }
+  </style>
+</head>
+<body>
+<div class="top">
+  <h1>路寶官 QR 코드</h1>
+  <p>테이블별 QR 코드입니다. 아래 URL을 설정한 뒤 생성하세요.</p>
+</div>
+
+<div class="url-setting">
+  <label>📌 사이트 주소 입력</label>
+  <input type="text" id="base-url" placeholder="https://your-site.pages.dev" value="">
+  <div class="hint">예: https://table-order.pages.dev &nbsp;|&nbsp; 로컬 테스트: http://localhost:5500</div>
+</div>
+
+<button class="gen-btn" onclick="generateAll()">🔄 QR 코드 생성</button>
+<button class="print-btn" onclick="window.print()">🖨️ 인쇄하기</button>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const TABLES = [
+  ...Array.from({length:32},(_,i)=>({num:i+1,type:'일반'})),
+  {num:33,type:'대형'},{num:34,type:'대형'}
+]
+
+function generateAll(){
+  const base = document.getElementById('base-url').value.trim().replace(/\/$/,'')
+  if(!base){alert('사이트 주소를 입력해주세요.');return}
+  const grid = document.getElementById('grid')
+  grid.innerHTML = ''
+  TABLES.forEach(t=>{
+    const card=document.createElement('div'); card.className='qr-card'
+    const box=document.createElement('div'); box.className='qr-box'
+    const url=`${base}/order.html?table=${t.num}`
+    card.innerHTML=`
+      <div class="qr-box" id="qr-${t.num}"></div>
+      <div class="table-name">${t.num}번 테이블</div>
+      <div class="table-sub">${t.type} 테이블</div>
+    `
+    grid.appendChild(card)
+    new QRCode(document.getElementById(`qr-${t.num}`),{
+      text:url, width:140, height:140,
+      colorDark:'#000', colorLight:'#fff',
+      correctLevel:QRCode.CorrectLevel.M
+    })
+  })
+}
+</script>
+</body>
+</html>
