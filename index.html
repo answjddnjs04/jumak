@@ -2,336 +2,158 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>테이블오더</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <title>路寶官 - 웨이팅</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    /* 전체 레이아웃 */
-    .app {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-      overflow: hidden;
-    }
-
-    /* 헤더 */
-    .header {
-      flex-shrink: 0;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0 32px;
-      height: 60px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .header-logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
-    .header-logo span { color: var(--primary); }
-
-    /* 배너 */
-    .banner {
-      flex-shrink: 0;
-      background: linear-gradient(135deg, #141428, #1a1a35);
-      border-bottom: 1px solid #2a2a5a;
-      padding: 0 32px;
-      height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .banner-stats { display: flex; gap: 40px; align-items: center; }
-    .stat { text-align: center; }
-    .stat .num { font-size: 28px; font-weight: 800; color: var(--primary); line-height: 1; }
-    .stat .lbl { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-
-    /* 컨텐츠 */
-    .content {
-      flex: 1;
-      overflow: hidden;
-      padding: 20px 28px;
-    }
-    .section-label {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--text-muted);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-    }
-
-    /* 테이블 그리드 */
-    .table-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 12px;
-      height: 100%;
-    }
-    /* iPad 크기별 grid 조정 */
-    @media (min-width: 1300px) {
-      .table-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
-    }
-    @media (max-width: 900px) {
-      .table-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
-    }
-
-    .table-card {
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 14px 10px;
-      transition: all 0.2s;
-      cursor: default;
-    }
-    .table-card.empty { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.04); }
-    .table-card.occupied { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.04); }
-    .table-card.warning { border-color: rgba(234,179,8,0.5); background: rgba(234,179,8,0.05); }
-
-    .table-card .tnum { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
-    .table-card .tstatus { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; }
-    .table-card .ttimer {
-      font-size: 18px;
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: 0.02em;
-    }
-    .empty .ttimer { font-size: 13px; color: var(--green); }
-    .occupied .ttimer { color: var(--red); }
-    .warning .ttimer { color: var(--yellow); }
-
-    /* 웨이팅 FAB */
-    .waiting-fab {
-      position: fixed;
-      bottom: 28px;
-      right: 28px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 50px;
-      padding: 16px 28px;
-      font-size: 17px;
-      font-weight: 800;
-      cursor: pointer;
-      box-shadow: 0 6px 28px rgba(255,107,53,0.45);
-      transition: all 0.2s;
-      z-index: 50;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .waiting-fab:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(255,107,53,0.55); }
-    .pulse {
-      width: 9px; height: 9px;
-      background: white;
-      border-radius: 50%;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%,100% { opacity:1; transform:scale(1); }
-      50% { opacity:0.5; transform:scale(1.5); }
-    }
-
-    /* 웨이팅 모달 */
-    .wait-info-box {
-      background: var(--surface2);
-      border-radius: 10px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
-    }
-    .wait-info-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 13px;
-      margin-bottom: 7px;
-    }
-    .wait-info-row:last-child { margin-bottom: 0; }
-    .wait-info-row span:last-child { font-weight: 700; color: var(--primary); }
-    .notice {
-      font-size: 12px;
-      color: var(--text-muted);
-      background: rgba(239,68,68,0.07);
-      border: 1px solid rgba(239,68,68,0.18);
-      border-radius: 8px;
-      padding: 10px 13px;
-      margin-bottom: 14px;
-      line-height: 1.7;
-    }
+    html,body { overflow:hidden; }
+    .app { display:flex; flex-direction:column; height:100vh; width:100vw; overflow:hidden; }
+    .header { flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:58px; display:flex; align-items:center; justify-content:space-between; }
+    .header-logo { font-size:20px; font-weight:800; display:flex; align-items:center; gap:10px; }
+    .header-logo .kr { color:var(--primary); font-size:16px; }
+    .banner { flex-shrink:0; background:linear-gradient(135deg,#141420,#1c1c30); border-bottom:1px solid #2a2a4a; padding:0 32px; height:82px; display:flex; align-items:center; justify-content:space-between; }
+    .stats { display:flex; gap:40px; align-items:center; }
+    .stat .num { font-size:30px; font-weight:800; color:var(--primary); line-height:1; }
+    .stat .lbl { font-size:11px; color:var(--text-muted); margin-top:3px; }
+    .divider { width:1px; height:38px; background:var(--border); }
+    .content { flex:1; overflow:hidden; padding:18px 28px; display:flex; flex-direction:column; }
+    .section-label { font-size:11px; font-weight:700; color:var(--text-muted); letter-spacing:.08em; text-transform:uppercase; margin-bottom:14px; flex-shrink:0; }
+    .table-grid { flex:1; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:10px; align-content:start; overflow:hidden; }
+    @media(min-width:1300px){ .table-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px;} }
+    @media(max-width:900px){ .table-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;} }
+    .tc { background:var(--surface); border:2px solid rgba(34,197,94,0.35); background:rgba(34,197,94,0.04); border-radius:14px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:14px 10px; gap:4px; }
+    .tc.large { border-color:rgba(59,130,246,0.4); background:rgba(59,130,246,0.04); }
+    .tc .tnum { font-size:20px; font-weight:800; }
+    .tc .ttype { font-size:10px; color:var(--text-muted); }
+    .no-table { color:var(--text-muted); font-size:14px; text-align:center; padding:48px; grid-column:1/-1; }
+    /* FAB */
+    .fab { position:fixed; bottom:28px; right:28px; background:var(--primary); color:white; border:none; border-radius:50px; padding:16px 28px; font-size:17px; font-weight:800; cursor:pointer; box-shadow:0 6px 28px rgba(255,107,53,.45); transition:all .2s; z-index:50; display:flex; align-items:center; gap:10px; }
+    .fab:hover { transform:translateY(-2px); box-shadow:0 10px 36px rgba(255,107,53,.55); }
+    .pulse { width:9px;height:9px;background:white;border-radius:50%;animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)} }
+    /* modal */
+    .info-box { background:var(--surface2); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+    .info-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:7px; }
+    .info-row:last-child { margin-bottom:0; }
+    .info-row span:last-child { font-weight:700; color:var(--primary); }
+    .notice { font-size:12px; color:var(--text-muted); background:rgba(239,68,68,.07); border:1px solid rgba(239,68,68,.18); border-radius:8px; padding:10px 13px; margin-bottom:14px; line-height:1.7; }
   </style>
 </head>
 <body>
 <div class="app">
-
   <div class="header">
-    <div class="header-logo">🍖 <span>테이블오더</span></div>
-    <div style="font-size:12px; color:var(--text-muted);">고객 화면</div>
+    <div class="header-logo">路寶官 <span class="kr">로보관</span></div>
+    <div style="font-size:12px;color:var(--text-muted)">고객 화면</div>
   </div>
-
   <div class="banner">
-    <div class="banner-stats">
-      <div class="stat">
-        <div class="num" id="waiting-count">0</div>
-        <div class="lbl">현재 대기팀</div>
-      </div>
-      <div style="width:1px; height:36px; background:var(--border);"></div>
-      <div class="stat">
-        <div class="num" id="empty-count">0</div>
-        <div class="lbl">빈 테이블</div>
-      </div>
-      <div style="width:1px; height:36px; background:var(--border);"></div>
-      <div class="stat">
-        <div class="num" id="est-wait">-</div>
-        <div class="lbl">예상 대기(분)</div>
-      </div>
+    <div class="stats">
+      <div class="stat"><div class="num" id="waiting-count">0</div><div class="lbl">현재 대기팀</div></div>
+      <div class="divider"></div>
+      <div class="stat"><div class="num" id="empty-count">0</div><div class="lbl">빈 테이블</div></div>
+      <div class="divider"></div>
+      <div class="stat"><div class="num" id="est-wait">-</div><div class="lbl">예상 대기(분)</div></div>
     </div>
-    <button class="btn btn-primary" onclick="openWaitingModal()">
-      🙋 웨이팅 신청하기
-    </button>
+    <button class="btn btn-primary" onclick="openModal()">🙋 웨이팅 신청하기</button>
   </div>
-
   <div class="content">
-    <div class="section-label">테이블 현황</div>
-    <div class="table-grid" id="table-grid"></div>
+    <div class="section-label">이용 가능한 테이블</div>
+    <div class="table-grid" id="grid"></div>
   </div>
-
 </div>
 
-<!-- 웨이팅 FAB (모바일 대응) -->
-<button class="waiting-fab" onclick="openWaitingModal()">
-  <div class="pulse"></div>
-  웨이팅하기
-</button>
+<button class="fab" onclick="openModal()"><div class="pulse"></div>웨이팅하기</button>
 
-<!-- 웨이팅 신청 모달 -->
-<div class="modal-overlay" id="waiting-modal">
+<div class="modal-overlay" id="modal">
   <div class="modal">
     <h2>🙋 웨이팅 신청</h2>
     <div class="sub">전화번호를 입력하시면 카카오톡으로 안내드립니다.</div>
-    <div class="wait-info-box">
-      <div class="wait-info-row"><span>현재 대기팀</span><span id="modal-waiting-count">0팀</span></div>
-      <div class="wait-info-row"><span>예상 대기시간</span><span id="modal-est-wait">-</span></div>
+    <div class="info-box">
+      <div class="info-row"><span>현재 대기팀</span><span id="m-waiting">0팀</span></div>
+      <div class="info-row"><span>예상 대기시간</span><span id="m-est">-</span></div>
     </div>
-    <div class="notice">
-      ⚠️ 호출 후 <strong>3분 내 미입장 시 자동 노쇼 취소</strong>됩니다.<br>
-      입장 1시간 전 / 30분 전 / 10분 전 알림을 발송해드립니다.
-    </div>
-    <input type="tel" id="phone-input" placeholder="010-0000-0000" maxlength="13">
+    <div class="notice">⚠️ 호출 후 <strong>3분 내 미입장 시 자동 노쇼 취소</strong>됩니다.<br>입장 1시간 전 / 30분 전 / 10분 전 알림을 드립니다.</div>
+    <input type="tel" id="phone" placeholder="010-0000-0000" maxlength="13">
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeWaitingModal()">취소</button>
+      <button class="btn btn-outline" onclick="closeModal()">취소</button>
       <button class="btn btn-primary" onclick="submitWaiting()">신청하기</button>
     </div>
   </div>
 </div>
-
 <div id="toast"></div>
 <script src="config.js"></script>
 <script>
-  let tables = [], waitings = [], timerInterval = null
+let tables=[],waitings=[]
 
-  async function init() {
-    await loadTables()
-    await loadWaitings()
-    startTimers()
-    db.channel('idx').on('postgres_changes',{event:'*',schema:'public',table:'tables'},loadTables)
-      .on('postgres_changes',{event:'*',schema:'public',table:'waitings'},loadWaitings).subscribe()
-  }
+async function init(){
+  await Promise.all([loadTables(),loadWaitings()])
+  db.channel('idx')
+    .on('postgres_changes',{event:'*',schema:'public',table:'tables'},loadTables)
+    .on('postgres_changes',{event:'*',schema:'public',table:'waitings'},loadWaitings)
+    .subscribe()
+}
 
-  async function loadTables() {
-    const {data} = await db.from('tables').select('*').order('id')
-    tables = data || []; renderTables(); updateBanner()
-  }
-  async function loadWaitings() {
-    const {data} = await db.from('waitings').select('*').eq('status','waiting').order('created_at')
-    waitings = data || []; updateBanner()
-  }
+async function loadTables(){
+  const {data}=await db.from('tables').select('*').order('id')
+  tables=data||[]; render(); updateBanner()
+}
+async function loadWaitings(){
+  const {data}=await db.from('waitings').select('*').eq('status','waiting').order('created_at')
+  waitings=data||[]; updateBanner()
+}
 
-  function renderTables() {
-    const g = document.getElementById('table-grid'); g.innerHTML = ''
-    tables.forEach(t => {
-      const card = document.createElement('div')
-      let cls = 'table-card ', timer = '', status = '이용 가능'
-      if (t.status === 'occupied' && t.timer_end_at) {
-        const rem = Math.floor((new Date(t.timer_end_at) - new Date()) / 1000)
-        if (rem <= 0) { cls += 'warning'; timer = `<div class="ttimer">시간초과</div>`; status = '시간초과' }
-        else if (rem <= 1800) { cls += 'warning'; timer = `<div class="ttimer" data-end="${t.timer_end_at}">${fmt(rem)}</div>`; status = '30분 이내' }
-        else { cls += 'occupied'; timer = `<div class="ttimer" data-end="${t.timer_end_at}">${fmt(rem)}</div>`; status = '이용 중' }
-      } else if (t.status === 'occupied') {
-        cls += 'occupied'; timer = `<div class="ttimer">-</div>`; status = '이용 중'
-      } else {
-        cls += 'empty'; timer = `<div class="ttimer">✓ 가능</div>`
-      }
-      card.className = cls
-      card.innerHTML = `<div class="tnum">${t.table_number}번</div><div class="tstatus">${status}</div>${timer}`
-      g.appendChild(card)
-    })
-  }
+function render(){
+  const g=document.getElementById('grid')
+  const empty=tables.filter(t=>t.status==='empty')
+  if(!empty.length){g.innerHTML='<div class="no-table">현재 이용 가능한 테이블이 없습니다.</div>';return}
+  g.innerHTML=empty.map(t=>`
+    <div class="tc ${t.table_type==='large'?'large':''}">
+      <div class="tnum">${t.table_number}번</div>
+      <div class="ttype">${t.table_type==='large'?'🪑 대형':'🪑 일반'}</div>
+      <span class="badge badge-green" style="margin-top:4px">이용 가능</span>
+    </div>`).join('')
+}
 
-  function updateBanner() {
-    const empty = tables.filter(t=>t.status==='empty').length
-    const est = calcEst()
-    document.getElementById('waiting-count').textContent = waitings.length
-    document.getElementById('empty-count').textContent = empty
-    document.getElementById('est-wait').textContent = est > 0 ? est : '-'
-    document.getElementById('modal-waiting-count').textContent = waitings.length + '팀'
-    document.getElementById('modal-est-wait').textContent = est > 0 ? `약 ${est}분` : '곧 입장 가능'
-  }
+function updateBanner(){
+  const empty=tables.filter(t=>t.status==='empty').length
+  const est=calcEst()
+  document.getElementById('waiting-count').textContent=waitings.length
+  document.getElementById('empty-count').textContent=empty
+  document.getElementById('est-wait').textContent=est>0?est:'-'
+  document.getElementById('m-waiting').textContent=waitings.length+'팀'
+  document.getElementById('m-est').textContent=est>0?`약 ${est}분`:'곧 입장 가능'
+}
 
-  function calcEst() {
-    if (waitings.length === 0) return 0
-    const now = new Date()
-    const ends = tables.filter(t=>t.status==='occupied'&&t.timer_end_at)
-      .map(t=>Math.max(0,Math.floor((new Date(t.timer_end_at)-now)/60000))).sort((a,b)=>a-b)
-    if (!ends.length) return 5
-    return (ends[Math.min(waitings.length,ends.length)-1]||ends[ends.length-1]) + 5
-  }
+function calcEst(){
+  if(!waitings.length) return 0
+  const now=new Date()
+  const ends=tables.filter(t=>t.status==='occupied'&&t.timer_end_at)
+    .map(t=>Math.max(0,Math.floor((new Date(t.timer_end_at)-now)/60000))).sort((a,b)=>a-b)
+  if(!ends.length) return 5
+  return (ends[Math.min(waitings.length,ends.length)-1]||ends[ends.length-1])+5
+}
 
-  function startTimers() {
-    if (timerInterval) clearInterval(timerInterval)
-    timerInterval = setInterval(() => {
-      document.querySelectorAll('.ttimer[data-end]').forEach(el => {
-        const rem = Math.floor((new Date(el.dataset.end) - new Date()) / 1000)
-        el.textContent = rem <= 0 ? '시간초과' : fmt(rem)
-      })
-      updateBanner()
-    }, 1000)
-  }
+function openModal(){updateBanner();document.getElementById('modal').classList.add('active');document.getElementById('phone').focus()}
+function closeModal(){document.getElementById('modal').classList.remove('active');document.getElementById('phone').value=''}
 
-  function fmt(sec) {
-    if (sec <= 0) return '00:00'
-    const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60
-    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
-  }
+document.getElementById('phone').addEventListener('input',function(e){
+  let v=e.target.value.replace(/\D/g,'')
+  if(v.length>=8) v=v.replace(/^(\d{3})(\d{4})(\d{0,4})/,'$1-$2-$3')
+  else if(v.length>=4) v=v.replace(/^(\d{3})(\d{0,4})/,'$1-$2')
+  e.target.value=v
+})
 
-  function openWaitingModal() { updateBanner(); document.getElementById('waiting-modal').classList.add('active'); document.getElementById('phone-input').focus() }
-  function closeWaitingModal() { document.getElementById('waiting-modal').classList.remove('active'); document.getElementById('phone-input').value = '' }
+async function submitWaiting(){
+  const phone=document.getElementById('phone').value
+  if(phone.replace(/-/g,'').length<10){showToast('올바른 전화번호를 입력해주세요.');return}
+  const {error}=await db.from('waitings').insert({phone,status:'waiting'})
+  if(error){showToast('오류: '+error.message);return}
+  closeModal();showToast('✅ 웨이팅 신청이 완료되었습니다!')
+  await loadWaitings()
+}
 
-  document.getElementById('phone-input').addEventListener('input', function(e) {
-    let v = e.target.value.replace(/\D/g,'')
-    if (v.length >= 8) v = v.replace(/^(\d{3})(\d{4})(\d{0,4})/,'$1-$2-$3')
-    else if (v.length >= 4) v = v.replace(/^(\d{3})(\d{0,4})/,'$1-$2')
-    e.target.value = v
-  })
-
-  async function submitWaiting() {
-    const phone = document.getElementById('phone-input').value
-    if (phone.replace(/-/g,'').length < 10) { showToast('올바른 전화번호를 입력해주세요.'); return }
-    const {error} = await db.from('waitings').insert({phone, status:'waiting'})
-    if (error) { showToast('오류: ' + error.message); return }
-    closeWaitingModal(); showToast('✅ 웨이팅 신청이 완료되었습니다!')
-    await loadWaitings()
-  }
-
-  function showToast(msg) {
-    const t = document.getElementById('toast'); t.textContent = msg
-    t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 3000)
-  }
-
-  init()
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
+init()
 </script>
 </body>
 </html>
