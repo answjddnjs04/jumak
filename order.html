@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>路寶官 - 주문</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root{--primary:#c0392b;--primary-dark:#a93226;--bg:#faf8f3;--surface:#fff;--border:#e8e0d5;--text:#1a1a1a;--muted:#888;--red:#c0392b;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);padding-bottom:120px;}
+
+    /* 메뉴판 이미지 */
+    .menu-img-wrap{width:100%;background:#fff;}
+    .menu-img-wrap img{width:100%;display:block;}
+    .menu-img-placeholder{width:100%;background:linear-gradient(135deg,#8b1a1a,#c0392b);padding:48px 24px;text-align:center;color:white;}
+    .menu-img-placeholder h1{font-size:32px;font-weight:900;margin-bottom:8px;}
+    .menu-img-placeholder p{font-size:14px;opacity:.8;}
+
+    /* 주문 섹션 */
+    .order-section{padding:20px 16px;}
+    .section-head{font-size:18px;font-weight:800;margin-bottom:16px;padding-bottom:10px;border-bottom:2px solid var(--primary);color:var(--primary);}
+
+    /* 카테고리 */
+    .category{margin-bottom:24px;}
+    .cat-title{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;padding:6px 12px;background:#f0ebe3;border-radius:6px;}
+
+    /* 메뉴 아이템 */
+    .item{display:flex;align-items:center;justify-content:space-between;padding:14px 12px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;gap:12px;}
+    .item-info{flex:1;}
+    .item-name{font-size:15px;font-weight:600;margin-bottom:3px;}
+    .item-price{font-size:14px;color:var(--primary);font-weight:700;}
+    .qty-control{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+    .qty-btn{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:white;font-size:18px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);transition:all .15s;}
+    .qty-btn:active{background:#f0ebe3;}
+    .qty-btn.plus{background:var(--primary);color:white;border-color:var(--primary);}
+    .qty-num{font-size:16px;font-weight:700;min-width:20px;text-align:center;}
+
+    /* 주문 합계 */
+    .order-summary{position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid var(--border);padding:12px 16px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.08);}
+    .summary-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+    .summary-items{font-size:13px;color:var(--muted);}
+    .summary-total{font-size:18px;font-weight:800;color:var(--primary);}
+    .order-btn{width:100%;padding:16px;background:var(--primary);color:white;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;transition:all .2s;}
+    .order-btn:active{background:var(--primary-dark);}
+    .order-btn:disabled{background:#ccc;cursor:not-allowed;}
+
+    /* 완료 화면 */
+    .done-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:300;overflow-y:auto;padding:32px 20px 60px;}
+    .done-screen.show{display:block;}
+    .done-icon{text-align:center;font-size:64px;margin-bottom:16px;}
+    .done-title{text-align:center;font-size:22px;font-weight:800;margin-bottom:8px;}
+    .done-sub{text-align:center;font-size:14px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+    .account-box{background:white;border:2px solid var(--primary);border-radius:16px;padding:24px;margin-bottom:16px;}
+    .account-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+    .account-bank{font-size:15px;font-weight:700;color:var(--primary);margin-bottom:12px;}
+    .account-number-row{display:flex;align-items:center;justify-content:space-between;background:#faf0ef;border-radius:10px;padding:14px 16px;}
+    .account-number{font-size:20px;font-weight:800;letter-spacing:.04em;}
+    .copy-btn{background:var(--primary);color:white;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+    .account-holder{font-size:13px;color:var(--muted);margin-top:8px;text-align:right;}
+    .notice-box{background:#fff8f0;border:1px solid #f5c6a0;border-radius:12px;padding:16px;font-size:14px;color:#7a4a1a;line-height:1.7;}
+    .notice-box strong{color:var(--primary);}
+    .order-items-summary{background:white;border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;}
+    .order-items-summary h3{font-size:14px;font-weight:700;margin-bottom:12px;color:var(--muted);}
+    .oi-row{display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-bottom:1px solid var(--border);}
+    .oi-row:last-child{border-bottom:none;font-weight:800;font-size:15px;color:var(--primary);}
+
+    .table-badge{display:inline-block;background:var(--primary);color:white;font-size:13px;font-weight:700;padding:4px 14px;border-radius:20px;margin-bottom:20px;}
+  </style>
+</head>
+<body>
+
+<!-- 메뉴판 이미지 -->
+<div class="menu-img-wrap">
+  <img src="menu.jpg" alt="메뉴판" onerror="this.style.display='none';document.getElementById('menu-placeholder').style.display='block'">
+  <div id="menu-placeholder" style="display:none" class="menu-img-placeholder">
+    <h1>路寶官</h1>
+    <p>로는 마시고, 죽어 봇짜!</p>
+  </div>
+</div>
+
+<!-- 주문 섹션 -->
+<div class="order-section">
+  <div class="section-head" id="table-label">🪑 테이블 로딩 중...</div>
+
+  <div id="menu-list"></div>
+</div>
+
+<!-- 고정 합계/주문 버튼 -->
+<div class="order-summary">
+  <div class="summary-top">
+    <div class="summary-items" id="summary-items">선택된 메뉴 없음</div>
+    <div class="summary-total" id="summary-total">₩0</div>
+  </div>
+  <button class="order-btn" id="order-btn" onclick="submitOrder()">주문하기</button>
+</div>
+
+<!-- 주문 완료 화면 -->
+<div class="done-screen" id="done-screen">
+  <div class="done-icon">✅</div>
+  <div class="done-title">주문이 접수되었습니다!</div>
+  <div class="done-sub" id="done-table-label"></div>
+
+  <div class="order-items-summary" id="done-order-summary"></div>
+
+  <div class="account-box">
+    <div class="account-label">입금 계좌</div>
+    <div class="account-bank" id="done-bank"></div>
+    <div class="account-number-row">
+      <div class="account-number" id="done-number"></div>
+      <button class="copy-btn" onclick="copyAccount()">복사</button>
+    </div>
+    <div class="account-holder" id="done-holder"></div>
+  </div>
+
+  <div class="notice-box">
+    💳 <strong>이체 순서대로 음식을 제조하는 점 양해 부탁드립니다.</strong><br>
+    입금 확인 후 조리가 시작됩니다. 이체 후 잠시 기다려 주세요. 🙏
+  </div>
+</div>
+
+<div id="toast" style="position:fixed;bottom:140px;left:50%;transform:translateX(-50%) translateY(10px);background:#333;color:white;padding:10px 20px;border-radius:20px;font-size:14px;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap;"></div>
+
+<script src="config.js"></script>
+<script src="account.js"></script>
+<script>
+const MENU = [
+  { category:'세트', items:[
+    {name:'마라탕 & 꿔바로우', price:42000},
+    {name:'마라샹궈 & 꿔바로우', price:40000},
+  ]},
+  { category:'메인', items:[
+    {name:'누나 집에가지 마라탕', price:24000},
+    {name:'누나 도망가지 마라샹궈', price:22000},
+    {name:'누나 내 꿈 꿔바로우', price:19000},
+    {name:'미치고 파닭포치', price:18000},
+  ]},
+  { category:'사이드', items:[
+    {name:'계란 무슨 사이 볶음밥', price:9000},
+    {name:'너를 짜파게티 & 군만두', price:8000},
+    {name:'요구√샤베트', price:9000},
+  ]},
+  { category:'음료', items:[
+    {name:'물(500ml)', price:1000},
+    {name:'제로콜라', price:2000},
+    {name:'콜라', price:2000},
+    {name:'사이다', price:2000},
+    {name:'아이스 버킷', price:3000},
+  ]},
+  { category:'미니게임', items:[
+    {name:'추억의 뽑기', price:1000},
+  ]},
+]
+
+const params = new URLSearchParams(window.location.search)
+const tableNum = parseInt(params.get('table')) || 0
+let tableId = null
+const cart = {}
+
+async function init(){
+  if(!tableNum){ document.getElementById('table-label').textContent='❌ 잘못된 QR코드입니다.'; return }
+  const {data}=await db.from('tables').select('*').eq('table_number',tableNum).single()
+  if(data){ tableId=data.id }
+  document.getElementById('table-label').textContent=`🪑 ${tableNum}번 테이블 주문`
+  renderMenu()
+}
+
+function renderMenu(){
+  const wrap=document.getElementById('menu-list')
+  wrap.innerHTML=MENU.map(cat=>`
+    <div class="category">
+      <div class="cat-title">${cat.category}</div>
+      ${cat.items.map(item=>`
+        <div class="item">
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            <div class="item-price">₩${item.price.toLocaleString()}</div>
+          </div>
+          <div class="qty-control">
+            <button class="qty-btn" onclick="changeQty('${item.name}',${item.price},-1)">−</button>
+            <div class="qty-num" id="qty-${encodeURIComponent(item.name)}">0</div>
+            <button class="qty-btn plus" onclick="changeQty('${item.name}',${item.price},1)">+</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `).join('')
+}
+
+function changeQty(name, price, delta){
+  cart[name] = cart[name]||{price,qty:0}
+  cart[name].qty = Math.max(0, cart[name].qty + delta)
+  if(cart[name].qty===0) delete cart[name]
+  document.getElementById('qty-'+encodeURIComponent(name)).textContent = cart[name]?.qty||0
+  updateSummary()
+}
+
+function updateSummary(){
+  const keys=Object.keys(cart)
+  const total=keys.reduce((s,k)=>s+cart[k].price*cart[k].qty,0)
+  const count=keys.reduce((s,k)=>s+cart[k].qty,0)
+  document.getElementById('summary-items').textContent=count>0?`${count}가지 메뉴 선택됨`:'선택된 메뉴 없음'
+  document.getElementById('summary-total').textContent='₩'+total.toLocaleString()
+  document.getElementById('order-btn').disabled=count===0
+}
+
+async function submitOrder(){
+  const keys=Object.keys(cart)
+  if(!keys.length){showToast('메뉴를 선택해주세요.');return}
+  if(!tableId){showToast('테이블 정보를 찾을 수 없습니다.');return}
+  const items=keys.map(k=>({name:k,qty:cart[k].qty,price:cart[k].price}))
+  const {error}=await db.from('orders').insert({
+    table_id:tableId, table_number:tableNum,
+    items, served_items:{}, status:'pending', payment_status:'pending'
+  })
+  if(error){showToast('오류: '+error.message);return}
+  showDone(items)
+}
+
+function showDone(items){
+  const total=items.reduce((s,i)=>s+i.price*i.qty,0)
+  document.getElementById('done-table-label').textContent=`${tableNum}번 테이블 · 총 ₩${total.toLocaleString()}`
+  document.getElementById('done-order-summary').innerHTML=`
+    <h3>주문 내역</h3>
+    ${items.map(i=>`<div class="oi-row"><span>${i.name} ×${i.qty}</span><span>₩${(i.price*i.qty).toLocaleString()}</span></div>`).join('')}
+    <div class="oi-row"><span>합계</span><span>₩${total.toLocaleString()}</span></div>
+  `
+  document.getElementById('done-bank').textContent=ACCOUNT.bank
+  document.getElementById('done-number').textContent=ACCOUNT.number
+  document.getElementById('done-holder').textContent='예금주: '+ACCOUNT.holder
+  document.getElementById('done-screen').classList.add('show')
+}
+
+function copyAccount(){
+  navigator.clipboard.writeText(ACCOUNT.number).then(()=>showToast('✅ 계좌번호가 복사되었습니다!')).catch(()=>{
+    const el=document.createElement('textarea');el.value=ACCOUNT.number;document.body.appendChild(el);el.select();document.execCommand('copy');document.body.removeChild(el);showToast('✅ 계좌번호가 복사되었습니다!')
+  })
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(10px)'},3000)}
+
+init()
+</script>
+</body>
+</html>
