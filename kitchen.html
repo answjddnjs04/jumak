@@ -67,8 +67,23 @@
     .pc-item{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);}
     .pc-item:last-child{border-bottom:none;}
     .pc-total{font-size:14px;font-weight:800;color:var(--primary);text-align:right;margin-bottom:12px;}
-    .paid-btn{width:100%;padding:11px;font-size:13px;font-weight:700;border-radius:9px;background:var(--primary);color:white;border:none;cursor:pointer;}
+
+    /* 이체완료 / 주문취소 버튼 */
+    .pending-card-actions{display:flex;gap:8px;}
+    .paid-btn{flex:1;padding:11px;font-size:13px;font-weight:700;border-radius:9px;background:var(--primary);color:white;border:none;cursor:pointer;transition:background .15s;}
     .paid-btn:hover{background:var(--primary-dark);}
+    .cancel-order-btn{flex:1;padding:11px;font-size:13px;font-weight:700;border-radius:9px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red);cursor:pointer;transition:background .15s;}
+    .cancel-order-btn:hover{background:rgba(239,68,68,0.22);}
+
+    /* ── 주문 취소 확인 모달 ── */
+    .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:500;align-items:center;justify-content:center;}
+    .confirm-overlay.active{display:flex;}
+    .confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 28px 22px;width:88%;max-width:360px;text-align:center;}
+    .confirm-icon{font-size:40px;margin-bottom:12px;}
+    .confirm-title{font-size:17px;font-weight:800;margin-bottom:8px;}
+    .confirm-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:22px;}
+    .confirm-actions{display:flex;gap:10px;}
+    .confirm-actions .btn{flex:1;padding:13px;font-size:14px;}
 
     /* ── 웨이팅 관리 탭 ── */
     .waiting-cols{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;overflow:hidden;}
@@ -176,10 +191,24 @@
   </div>
 </div>
 
+<!-- 주문 취소 확인 모달 -->
+<div class="confirm-overlay" id="cancel-confirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">주문을 삭제하시겠습니까?</div>
+    <div class="confirm-desc">이 주문을 삭제하면 복구할 수 없습니다.<br>정말 삭제하시겠습니까?</div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeCancelConfirm()">아니요</button>
+      <button class="btn btn-red" style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:var(--red);font-weight:700;" onclick="doDeleteOrder()">예, 삭제합니다</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script src="config.js"></script>
 <script>
 let paidOrders=[],pendingOrders=[],tables=[],waitings=[],timerInterval=null
+let pendingDeleteId=null
 
 function switchTab(name){
   document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['kitchen','waiting'][i]===name))
@@ -190,13 +219,11 @@ function switchTab(name){
 async function loadAll(){ await Promise.all([loadOrders(),loadTables(),loadWaitings()]); startTimers() }
 
 async function loadOrders(){
-  // 이체완료 (좌측): payment_status='paid', status != 'served'
   const {data:paid}=await db.from('orders').select('*')
     .eq('payment_status','paid').neq('status','served')
     .order('payment_confirmed_at')
   paidOrders=paid||[]
 
-  // 입금대기 (우측): payment_status='pending'
   const {data:pend}=await db.from('orders').select('*')
     .eq('payment_status','pending').order('created_at')
   pendingOrders=pend||[]
@@ -280,7 +307,10 @@ function renderPendingOrders(){
         ${items.map(i=>`<div class="pc-item"><span>${i.name} ×${i.qty}</span><span>₩${((i.price||0)*i.qty).toLocaleString()}</span></div>`).join('')}
       </div>
       <div class="pc-total">합계 ₩${total.toLocaleString()}</div>
-      <button class="paid-btn" onclick="confirmPayment('${o.id}')">💳 이체완료 확인</button>
+      <div class="pending-card-actions">
+        <button class="paid-btn" onclick="confirmPayment('${o.id}')">💳 이체완료 확인</button>
+        <button class="cancel-order-btn" onclick="openCancelConfirm('${o.id}')">🗑️ 주문 취소</button>
+      </div>
     </div>`
   }).join('')
 }
@@ -294,6 +324,28 @@ async function confirmPayment(oid){
   }).eq('id',oid)
   if(error){showToast('오류: '+error.message);return}
   showToast('✅ 이체 완료 처리됨!'); await loadOrders()
+}
+
+// 주문 취소 확인 모달 열기
+function openCancelConfirm(oid){
+  pendingDeleteId=oid
+  document.getElementById('cancel-confirm').classList.add('active')
+}
+
+// 주문 취소 확인 모달 닫기
+function closeCancelConfirm(){
+  pendingDeleteId=null
+  document.getElementById('cancel-confirm').classList.remove('active')
+}
+
+// 실제 삭제 실행
+async function doDeleteOrder(){
+  if(!pendingDeleteId) return
+  const {error}=await db.from('orders').delete().eq('id',pendingDeleteId)
+  closeCancelConfirm()
+  if(error){showToast('오류: '+error.message);return}
+  showToast('🗑️ 주문이 삭제되었습니다.')
+  await loadOrders()
 }
 
 // 메뉴 서빙 토글
