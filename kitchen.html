@@ -346,7 +346,7 @@ function renderWaitingList(){
   c.innerHTML=waitings.map((w,i)=>`
     <div class="witem">
       <div class="wrank">${i+1}</div>
-      <div class="winfo"><div class="wphone">${w.phone}</div><div class="wsub">${timeAgo(w.created_at)} 신청</div></div>
+      <div class="winfo"><div class="wphone">${w.phone}</div><div class="wsub">${w.party_size||1}명 · ${timeAgo(w.created_at)} 신청</div></div>
       <div class="wactions">
         <button class="btn btn-primary" onclick="callWaiting('${w.id}')">호출</button>
         <button class="btn btn-outline" onclick="cancelWaiting('${w.id}')">취소</button>
