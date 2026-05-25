@@ -82,6 +82,8 @@ async function init(){
   db.channel('idx')
     .on('postgres_changes',{event:'*',schema:'public',table:'waitings'},loadWaitings)
     .subscribe()
+  // 5초마다 강제 갱신
+  setInterval(loadWaitings, 5000)
 }
 
 async function loadWaitings(){
