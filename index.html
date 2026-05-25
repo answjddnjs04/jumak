@@ -3,134 +3,645 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title>路寶官 - 웨이팅</title>
+  <title>路寶官 - 주방 관리</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    html,body { overflow:hidden; }
-    .app { display:flex; flex-direction:column; height:100vh; width:100vw; overflow:hidden; }
-    .header { flex-shrink:0; background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:58px; display:flex; align-items:center; justify-content:space-between; }
-    .header-logo { font-size:20px; font-weight:800; display:flex; align-items:center; gap:10px; }
-    .header-logo .kr { color:var(--primary); font-size:16px; }
-    .main-area { flex:1; background:linear-gradient(135deg,#141420,#1c1c30); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
-    .waiting-label { font-size:20px; font-weight:700; color:#FF6B35; letter-spacing:.08em; }
-    .waiting-number { font-size:140px; font-weight:900; color:#ffffff; line-height:1; }
-    .waiting-unit { font-size:20px; color:#aaa; margin-top:4px; }
-    /* FAB */
-    .fab { position:fixed; bottom:40px; left:50%; transform:translateX(-50%); background:var(--primary); color:white; border:none; border-radius:50px; padding:16px 40px; font-size:17px; font-weight:800; cursor:pointer; box-shadow:0 6px 28px rgba(255,107,53,.45); transition:all .2s; z-index:50; display:flex; align-items:center; gap:10px; white-space:nowrap; }
-    .fab:hover { box-shadow:0 10px 36px rgba(255,107,53,.55); }
-    .pulse { width:9px;height:9px;background:white;border-radius:50%;animation:pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.5)} }
-    /* modal */
-    .info-box { background:var(--surface2); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
-    .info-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:7px; }
-    .info-row:last-child { margin-bottom:0; }
-    .info-row span:last-child { font-weight:700; color:var(--primary); }
-    .notice { font-size:12px; color:var(--text-muted); background:rgba(239,68,68,.07); border:1px solid rgba(239,68,68,.18); border-radius:8px; padding:10px 13px; margin-bottom:14px; line-height:1.7; }
-    .party-row { display:flex; align-items:center; gap:16px; margin-bottom:14px; }
-    .party-label { font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:10px; }
-    .party-btn { width:40px; height:40px; border-radius:50%; border:1.5px solid var(--border); background:var(--surface2); color:var(--text); font-size:22px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
-    .party-btn.plus { background:var(--primary); color:white; border-color:var(--primary); }
-    .party-num { font-size:26px; font-weight:800; min-width:32px; text-align:center; }
-    .party-unit { font-size:14px; color:var(--text-muted); }
+    html,body{overflow:hidden;}
+    .app{display:flex;flex-direction:column;height:100vh;width:100vw;overflow:hidden;}
+
+    /* 헤더 */
+    .header{flex-shrink:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;}
+    .header-logo{font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;}
+    .header-logo span{color:var(--primary);}
+    .hdr-right{display:flex;align-items:center;gap:12px;}
+    .hdr-stats{font-size:12px;color:var(--text-muted);}
+
+    /* 탭 */
+    .tabs{flex-shrink:0;display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;gap:4px;}
+    .tab-btn{padding:13px 22px;font-size:14px;font-weight:600;color:var(--text-muted);border:none;background:transparent;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
+    .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+
+    /* 탭 컨텐츠 */
+    .tab-content{display:none;flex:1;overflow:hidden;}
+    .tab-content.active{display:flex;}
+
+    /* ── 요리 관리 탭 (2컬럼) ── */
+    .kitchen-cols{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;overflow:hidden;}
+    .col{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+    .col:last-child{border-right:none;}
+    .col-header{flex-shrink:0;padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface);}
+    .col-title{font-size:14px;font-weight:800;}
+    .col-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px;}
+    .col-body::-webkit-scrollbar{width:3px;}
+    .col-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    /* 주문 카드 */
+    .order-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;}
+    .order-card.cooking{border-color:rgba(234,179,8,.35);}
+    .order-card.all-served{border-color:rgba(34,197,94,.4);}
+    .oc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .oc-title{font-size:17px;font-weight:800;}
+    .oc-meta{display:flex;align-items:center;gap:8px;}
+    .oc-time{font-size:11px;color:var(--text-muted);}
+    .prog-bar{background:var(--surface2);border-radius:6px;height:5px;overflow:hidden;margin-bottom:8px;}
+    .prog-fill{height:100%;background:var(--green);border-radius:6px;transition:width .4s;}
+    .prog-txt{font-size:11px;color:var(--text-muted);margin-bottom:10px;}
+    .menu-list{display:flex;flex-direction:column;gap:6px;}
+    .menu-item{display:flex;align-items:center;gap:9px;background:var(--surface2);border-radius:8px;padding:9px 12px;cursor:pointer;border:1.5px solid transparent;transition:all .15s;}
+    .menu-item:hover{border-color:var(--primary);}
+    .menu-item.served{background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.25);}
+    .chk{width:20px;height:20px;border-radius:5px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;transition:all .15s;}
+    .menu-item.served .chk{background:var(--green);border-color:var(--green);}
+    .mn{flex:1;font-size:13px;}
+    .menu-item.served .mn{text-decoration:line-through;color:var(--text-muted);}
+    .mq{font-size:12px;color:var(--text-muted);font-weight:600;}
+    .complete-btn{width:100%;padding:11px;font-size:13px;font-weight:700;border-radius:9px;margin-top:10px;}
+
+    /* 대기 주문 카드 */
+    .pending-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;}
+    .pc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .pc-title{font-size:17px;font-weight:800;}
+    .pc-time{font-size:11px;color:var(--text-muted);}
+    .pc-items{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
+    .pc-item{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--border);}
+    .pc-item:last-child{border-bottom:none;}
+    .pc-total{font-size:14px;font-weight:800;color:var(--primary);text-align:right;margin-bottom:12px;}
+    .pending-card-actions{display:flex;gap:8px;}
+    .paid-btn{flex:1;padding:11px;font-size:13px;font-weight:700;border-radius:9px;background:var(--primary);color:white;border:none;cursor:pointer;transition:background .15s;}
+    .paid-btn:hover{background:var(--primary-dark);}
+    .cancel-order-btn{flex:1;padding:11px;font-size:13px;font-weight:700;border-radius:9px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red);cursor:pointer;transition:background .15s;}
+    .cancel-order-btn:hover{background:rgba(239,68,68,0.22);}
+
+    /* 확인 모달 공통 */
+    .confirm-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:500;align-items:center;justify-content:center;}
+    .confirm-overlay.active{display:flex;}
+    .confirm-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:28px 28px 22px;width:88%;max-width:360px;text-align:center;}
+    .confirm-icon{font-size:40px;margin-bottom:12px;}
+    .confirm-title{font-size:17px;font-weight:800;margin-bottom:8px;}
+    .confirm-desc{font-size:13px;color:var(--text-muted);line-height:1.7;margin-bottom:22px;}
+    .confirm-actions{display:flex;gap:10px;}
+    .confirm-actions .btn{flex:1;padding:13px;font-size:14px;}
+
+    /* ── 웨이팅 관리 탭 ── */
+    .waiting-cols{display:grid;grid-template-columns:1fr 1fr;gap:0;flex:1;overflow:hidden;}
+    .panel{display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border);}
+    .panel:last-child{border-right:none;}
+    .panel-header{flex-shrink:0;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:space-between;}
+    .panel-title{font-size:14px;font-weight:800;}
+    .panel-body{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}
+    .panel-body::-webkit-scrollbar{width:3px;}
+    .panel-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+    .tmgmt-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:11px;padding:11px 14px;display:flex;align-items:center;gap:10px;}
+    .tmgmt-card.occupied{border-color:rgba(239,68,68,.3);}
+    .tmgmt-num{font-size:16px;font-weight:800;width:34px;}
+    .tmgmt-info{flex:1;}
+    .tmgmt-timer{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
+    .occupied .tmgmt-timer{color:var(--red);}
+    .tmgmt-actions{display:flex;gap:5px;}
+    .tmgmt-actions .btn{padding:6px 11px;font-size:12px;}
+    .witem{background:var(--surface2);border-radius:11px;padding:11px 14px;display:flex;align-items:center;gap:10px;}
+    .wrank{font-size:18px;font-weight:800;color:var(--primary);width:22px;}
+    .winfo{flex:1;}
+    .wphone{font-size:14px;font-weight:600;}
+    .wsub{font-size:11px;color:var(--text-muted);margin-top:2px;}
+    .wactions{display:flex;gap:5px;}
+    .wactions .btn{padding:6px 10px;font-size:12px;}
+    .empty-state{color:var(--text-muted);font-size:13px;text-align:center;padding:40px;}
+
+    /* 요약 바 */
+    .summary-bar{flex-shrink:0;display:flex;background:var(--surface);border-bottom:1px solid var(--border);}
+    .sum-item{flex:1;padding:10px 16px;text-align:center;border-right:1px solid var(--border);}
+    .sum-item:last-child{border-right:none;}
+    .sum-num{font-size:20px;font-weight:800;}
+    .sum-lbl{font-size:10px;color:var(--text-muted);margin-top:2px;}
+    .orange{color:var(--primary);}
+    .green{color:var(--green);}
+    .red{color:var(--red);}
+
+    /* ── 통계 탭 ── */
+    .stats-wrap{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;}
+    .stats-wrap::-webkit-scrollbar{width:4px;}
+    .stats-wrap::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    /* 통계 상단 카드 */
+    .stat-kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .stat-kpi{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:18px 16px;text-align:center;}
+    .stat-kpi .kpi-num{font-size:28px;font-weight:900;margin-bottom:4px;}
+    .stat-kpi .kpi-lbl{font-size:11px;color:var(--text-muted);}
+    .kpi-revenue{color:var(--primary);}
+    .kpi-orders{color:var(--green);}
+    .kpi-items{color:var(--blue);}
+
+    /* 리셋 정보 */
+    .stats-meta{display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:10px 16px;}
+    .stats-meta-txt{font-size:12px;color:var(--text-muted);line-height:1.6;}
+    .reset-btn{padding:8px 16px;font-size:12px;font-weight:700;border-radius:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s;}
+    .reset-btn:hover{background:rgba(239,68,68,0.22);}
+
+    /* 메뉴별 판매 테이블 */
+    .stats-section-title{font-size:13px;font-weight:800;color:var(--text-muted);letter-spacing:.04em;padding:4px 2px;}
+    .stats-table{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;overflow:hidden;}
+    .st-head{display:grid;grid-template-columns:1fr 80px 80px 100px;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border);}
+    .st-head span{font-size:11px;font-weight:700;color:var(--text-muted);}
+    .st-head span:not(:first-child){text-align:right;}
+    .st-row{display:grid;grid-template-columns:1fr 80px 80px 100px;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;transition:background .12s;}
+    .st-row:last-child{border-bottom:none;}
+    .st-row:hover{background:var(--surface2);}
+    .st-name{font-size:13px;font-weight:600;}
+    .st-cat{font-size:10px;color:var(--text-muted);margin-top:2px;}
+    .st-qty{font-size:14px;font-weight:700;text-align:right;color:var(--text);}
+    .st-rank{font-size:11px;font-weight:700;text-align:right;color:var(--text-muted);}
+    .st-amount{font-size:13px;font-weight:700;text-align:right;color:var(--primary);}
+
+    /* 판매량 바 */
+    .bar-wrap{height:4px;background:var(--surface2);border-radius:4px;margin-top:5px;overflow:hidden;}
+    .bar-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .5s;}
+
+    /* 카테고리 요약 */
+    .cat-summary{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+    .cat-card{background:var(--surface);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;}
+    .cat-card-name{font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:6px;}
+    .cat-card-amount{font-size:18px;font-weight:800;color:var(--primary);}
+    .cat-card-qty{font-size:11px;color:var(--text-muted);margin-top:2px;}
   </style>
 </head>
 <body>
 <div class="app">
   <div class="header">
-    <div class="header-logo">路寶官 <span class="kr">로봇관</span></div>
-    <div style="font-size:12px;color:var(--text-muted)">고객 화면</div>
+    <div class="header-logo">路寶官 <span>주방 관리</span></div>
+    <div class="hdr-right">
+      <div class="hdr-stats" id="hdr-stats"></div>
+      <button class="btn btn-outline" style="padding:7px 14px;font-size:12px;" onclick="loadAll()">🔄 새로고침</button>
+    </div>
   </div>
-  <div class="main-area">
-    <div class="waiting-label">현재 대기팀</div>
-    <div class="waiting-number" id="waiting-count">0</div>
-    <div class="waiting-unit">팀</div>
-    <div style="font-size:13px;color:#666;margin-top:24px;text-align:center;line-height:1.8;">아래 버튼을 누르면<br>실시간 대기 현황이 최신화됩니다.</div>
-    <button onclick="loadWaitings()" style="margin-top:12px;background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:14px;padding:14px 36px;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:10px;transition:all .2s;" onmouseover="this.style.borderColor='#FF6B35';this.style.color='#FF6B35'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">🔄 새로고침</button>
+
+  <div class="summary-bar">
+    <div class="sum-item"><div class="sum-num orange" id="s-pending">0</div><div class="sum-lbl">이체 대기</div></div>
+    <div class="sum-item"><div class="sum-num" id="s-cooking">0</div><div class="sum-lbl">조리 중</div></div>
+    <div class="sum-item"><div class="sum-num green" id="s-served">0</div><div class="sum-lbl">서빙 완료</div></div>
+    <div class="sum-item"><div class="sum-num red" id="s-occ">0</div><div class="sum-lbl">이용 중 테이블</div></div>
+    <div class="sum-item"><div class="sum-num" id="s-wait">0</div><div class="sum-lbl">웨이팅</div></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('kitchen')">🍳 요리 관리</button>
+    <button class="tab-btn" onclick="switchTab('waiting')">🙋 웨이팅 관리</button>
+    <button class="tab-btn" onclick="switchTab('stats')">📊 통계 관리</button>
+  </div>
+
+  <!-- 요리 관리 탭 -->
+  <div class="tab-content active" id="tab-kitchen">
+    <div class="kitchen-cols">
+      <div class="col">
+        <div class="col-header">
+          <div class="col-title">✅ 이체 완료 · 조리 중</div>
+          <span class="badge badge-green" id="paid-badge">0건</span>
+        </div>
+        <div class="col-body" id="paid-orders"></div>
+      </div>
+      <div class="col">
+        <div class="col-header">
+          <div class="col-title">💳 입금 대기 주문</div>
+          <span class="badge badge-yellow" id="pending-badge">0건</span>
+        </div>
+        <div class="col-body" id="pending-orders"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 웨이팅 관리 탭 -->
+  <div class="tab-content" id="tab-waiting">
+    <div class="waiting-cols">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🪑 테이블 관리</div>
+          <span class="badge badge-gray" id="tbl-badge">-</span>
+        </div>
+        <div class="panel-body" id="table-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🙋 대기 목록</div>
+          <span class="badge badge-yellow" id="wait-badge">0팀</span>
+        </div>
+        <div class="panel-body" id="waiting-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 통계 관리 탭 -->
+  <div class="tab-content" id="tab-stats">
+    <div class="stats-wrap" id="stats-wrap">
+      <div class="empty-state">통계를 불러오는 중...</div>
+    </div>
   </div>
 </div>
 
-<button class="fab" onclick="openModal()"><div class="pulse"></div>웨이팅하기</button>
-
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <h2>🙋 웨이팅 신청</h2>
-    <div class="sub">전화번호를 입력하시면 전화 연락으로 안내드립니다.</div>
-    <div class="info-box">
-      <div class="info-row"><span>현재 대기팀</span><span id="m-waiting">0팀</span></div>
-    </div>
-    <div class="notice">⚠️ 전화 연락 후 <strong>5분 내 미응답 시 자동 노쇼 취소</strong>됩니다.<br>입장 가능 시간에 맞춰 연락을 드리겠습니다.</div>
-    <input type="tel" id="phone" placeholder="010-0000-0000" maxlength="13">
-    <div class="party-label">인원수</div>
-    <div class="party-row">
-      <button class="party-btn" onclick="changeParty(-1)">−</button>
-      <div class="party-num" id="party-num">1</div>
-      <button class="party-btn plus" onclick="changeParty(1)">+</button>
-      <span class="party-unit">명</span>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeModal()">취소</button>
-      <button class="btn btn-primary" onclick="submitWaiting()">신청하기</button>
+<!-- 주문 취소 확인 모달 -->
+<div class="confirm-overlay" id="cancel-confirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🗑️</div>
+    <div class="confirm-title">주문을 삭제하시겠습니까?</div>
+    <div class="confirm-desc">이 주문을 삭제하면 복구할 수 없습니다.<br>정말 삭제하시겠습니까?</div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeCancelConfirm()">아니요</button>
+      <button class="btn" style="flex:1;padding:13px;font-size:14px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:var(--red);font-weight:700;border-radius:10px;" onclick="doDeleteOrder()">예, 삭제합니다</button>
     </div>
   </div>
 </div>
+
+<!-- 통계 초기화 확인 모달 -->
+<div class="confirm-overlay" id="stats-reset-confirm">
+  <div class="confirm-box">
+    <div class="confirm-icon">🔄</div>
+    <div class="confirm-title">통계를 초기화하시겠습니까?</div>
+    <div class="confirm-desc">초기화하면 이 시점 이전의 판매 데이터는<br>통계에서 제외됩니다.<br><br>실제 주문 데이터는 삭제되지 않습니다.</div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeStatsResetConfirm()">취소</button>
+      <button class="btn" style="flex:1;padding:13px;font-size:14px;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.4);color:var(--red);font-weight:700;border-radius:10px;" onclick="doStatsReset()">초기화</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script src="config.js"></script>
 <script>
-let waitings=[], partySize=1
+// ── 메뉴 카테고리 정보 (order.html과 동일하게 유지) ──
+const MENU_META = {
+  '마라탕 & 꿔바로우':        {category:'세트'},
+  '마라샹궈 & 꿔바로우':      {category:'세트'},
+  '누나 집에가지 마라탕':      {category:'메인'},
+  '누나 도망가지 마라샹궈':    {category:'메인'},
+  '누나 내 꿈 꿔바로우':      {category:'메인'},
+  '미치고 파닭포치':           {category:'메인'},
+  '계란 무슨 사이 볶음밥':     {category:'사이드'},
+  '너를 짜파게티 & 군만두':    {category:'사이드'},
+  '요구√샤베트':               {category:'사이드'},
+  '물(500ml)':                 {category:'음료'},
+  '제로콜라':                  {category:'음료'},
+  '콜라':                      {category:'음료'},
+  '사이다':                    {category:'음료'},
+  '아이스 버킷':               {category:'음료'},
+  '추억의 뽑기':               {category:'미니게임'},
+}
 
-async function init(){
-  await loadWaitings()
-  db.channel('idx')
-    .on('postgres_changes',{event:'*',schema:'public',table:'waitings'},loadWaitings)
-    .subscribe()
-  // 5초마다 강제 갱신
-  setInterval(loadWaitings, 5000)
+const STATS_RESET_KEY = 'lobogwan_stats_reset_at'
+
+let paidOrders=[], pendingOrders=[], tables=[], waitings=[], timerInterval=null
+let pendingDeleteId=null
+
+// ── 탭 전환 ──
+function switchTab(name){
+  const names=['kitchen','waiting','stats']
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', names[i]===name))
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'))
+  document.getElementById('tab-'+name).classList.add('active')
+  if(name==='stats') loadStats()
+}
+
+async function loadAll(){ await Promise.all([loadOrders(),loadTables(),loadWaitings()]); startTimers() }
+
+// ── 주문 로드 ──
+async function loadOrders(){
+  const {data:paid}=await db.from('orders').select('*')
+    .eq('payment_status','paid').neq('status','served')
+    .order('payment_confirmed_at')
+  paidOrders=paid||[]
+
+  const {data:pend}=await db.from('orders').select('*')
+    .eq('payment_status','pending').order('created_at')
+  pendingOrders=pend||[]
+
+  renderPaidOrders(); renderPendingOrders(); updateSummary()
+}
+
+async function loadTables(){
+  const {data}=await db.from('tables').select('*').order('id')
+  tables=data||[]; renderTableList(); updateSummary()
 }
 
 async function loadWaitings(){
   const {data}=await db.from('waitings').select('*').eq('status','waiting').order('created_at')
-  waitings=data||[]
-  document.getElementById('waiting-count').textContent=waitings.length
-  document.getElementById('m-waiting').textContent=waitings.length+'팀'
+  waitings=data||[]; renderWaitingList(); updateSummary()
 }
 
-function changeParty(d){
-  partySize=Math.max(1,Math.min(20,partySize+d))
-  document.getElementById('party-num').textContent=partySize
+function updateSummary(){
+  const occ=tables.filter(t=>t.status==='occupied').length
+  document.getElementById('s-pending').textContent=pendingOrders.length
+  document.getElementById('s-cooking').textContent=paidOrders.filter(o=>o.status==='cooking').length
+  document.getElementById('s-served').textContent=paidOrders.filter(o=>o.status==='partial').length
+  document.getElementById('s-occ').textContent=occ
+  document.getElementById('s-wait').textContent=waitings.length
+  document.getElementById('paid-badge').textContent=paidOrders.length+'건'
+  document.getElementById('pending-badge').textContent=pendingOrders.length+'건'
+  document.getElementById('tbl-badge').textContent=`${occ}/${tables.length}석 이용중`
+  document.getElementById('wait-badge').textContent=waitings.length+'팀'
+  document.getElementById('hdr-stats').textContent=`조리 ${paidOrders.length} · 대기 ${waitings.length}팀`
 }
 
-function openModal(){
-  document.getElementById('m-waiting').textContent=waitings.length+'팀'
-  document.getElementById('modal').classList.add('active')
-  document.getElementById('phone').focus()
-}
-function closeModal(){
-  document.getElementById('modal').classList.remove('active')
-  document.getElementById('phone').value=''
-  partySize=1
-  document.getElementById('party-num').textContent=1
+// ── 이체완료 주문 렌더링 ──
+function renderPaidOrders(){
+  const c=document.getElementById('paid-orders')
+  if(!paidOrders.length){c.innerHTML='<div class="empty-state">이체 완료된 주문이 없습니다.</div>';return}
+  c.innerHTML=paidOrders.map(o=>{
+    const items=o.items||[], served=o.served_items||{}
+    const sc=items.filter(i=>served[i.name]).length, tot=items.length
+    const allDone=sc===tot, pct=tot>0?Math.round(sc/tot*100):0
+    const elapsed=Math.floor((new Date()-new Date(o.payment_confirmed_at||o.created_at))/60000)
+    return `
+    <div class="order-card ${allDone?'all-served':'cooking'}">
+      <div class="oc-head">
+        <div class="oc-title">🪑 ${o.table_number}번 테이블</div>
+        <div class="oc-meta">
+          <span class="badge ${allDone?'badge-green':'badge-yellow'}">${allDone?'완료':'조리중'}</span>
+          <span class="oc-time">${elapsed}분 전</span>
+        </div>
+      </div>
+      <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+      <div class="prog-txt">${sc}/${tot} 서빙 완료</div>
+      <div class="menu-list">
+        ${items.map(item=>`
+          <div class="menu-item ${served[item.name]?'served':''}" onclick="toggleServed('${o.id}','${item.name}')">
+            <div class="chk">${served[item.name]?'✓':''}</div>
+            <div class="mn">${item.name}</div>
+            <div class="mq">×${item.qty}</div>
+          </div>
+        `).join('')}
+      </div>
+      ${allDone?`<button class="btn btn-green complete-btn" onclick="completeOrder('${o.id}',${o.table_id})">✅ 다 나감 확인 → 타이머 시작</button>`:''}
+    </div>`
+  }).join('')
 }
 
-document.getElementById('phone').addEventListener('input',function(e){
-  let v=e.target.value.replace(/\D/g,'')
-  if(v.length>=8) v=v.replace(/^(\d{3})(\d{4})(\d{0,4})/,'$1-$2-$3')
-  else if(v.length>=4) v=v.replace(/^(\d{3})(\d{0,4})/,'$1-$2')
-  e.target.value=v
-})
+// ── 입금대기 주문 렌더링 ──
+function renderPendingOrders(){
+  const c=document.getElementById('pending-orders')
+  if(!pendingOrders.length){c.innerHTML='<div class="empty-state">입금 대기 주문이 없습니다.</div>';return}
+  c.innerHTML=pendingOrders.map(o=>{
+    const items=o.items||[]
+    const total=items.reduce((s,i)=>s+(i.price||0)*i.qty,0)
+    const elapsed=Math.floor((new Date()-new Date(o.created_at))/60000)
+    return `
+    <div class="pending-card">
+      <div class="pc-head">
+        <div class="pc-title">🪑 ${o.table_number}번 테이블</div>
+        <span class="pc-time">${elapsed}분 전</span>
+      </div>
+      <div class="pc-items">
+        ${items.map(i=>`<div class="pc-item"><span>${i.name} ×${i.qty}</span><span>₩${((i.price||0)*i.qty).toLocaleString()}</span></div>`).join('')}
+      </div>
+      <div class="pc-total">합계 ₩${total.toLocaleString()}</div>
+      <div class="pending-card-actions">
+        <button class="paid-btn" onclick="confirmPayment('${o.id}')">💳 이체완료 확인</button>
+        <button class="cancel-order-btn" onclick="openCancelConfirm('${o.id}')">🗑️ 주문 취소</button>
+      </div>
+    </div>`
+  }).join('')
+}
 
-async function submitWaiting(){
-  const phone=document.getElementById('phone').value
-  if(phone.replace(/-/g,'').length<10){showToast('올바른 전화번호를 입력해주세요.');return}
-  const {error}=await db.from('waitings').insert({phone,party_size:partySize,status:'waiting'})
+// ── 이체완료 처리 ──
+async function confirmPayment(oid){
+  const {error}=await db.from('orders').update({
+    payment_status:'paid',
+    status:'cooking',
+    payment_confirmed_at:new Date().toISOString()
+  }).eq('id',oid)
   if(error){showToast('오류: '+error.message);return}
-  closeModal()
-  showToast('✅ 웨이팅 신청이 완료되었습니다!')
-  await loadWaitings()
+  showToast('✅ 이체 완료 처리됨!'); await loadOrders()
 }
 
+// ── 주문 취소 모달 ──
+function openCancelConfirm(oid){ pendingDeleteId=oid; document.getElementById('cancel-confirm').classList.add('active') }
+function closeCancelConfirm(){ pendingDeleteId=null; document.getElementById('cancel-confirm').classList.remove('active') }
+async function doDeleteOrder(){
+  if(!pendingDeleteId) return
+  const {error}=await db.from('orders').delete().eq('id',pendingDeleteId)
+  closeCancelConfirm()
+  if(error){showToast('오류: '+error.message);return}
+  showToast('🗑️ 주문이 삭제되었습니다.'); await loadOrders()
+}
+
+// ── 메뉴 서빙 토글 ──
+async function toggleServed(oid,name){
+  const o=paidOrders.find(x=>x.id===oid); if(!o) return
+  const s={...(o.served_items||{})}; s[name]=!s[name]
+  const allDone=(o.items||[]).every(i=>s[i.name])
+  await db.from('orders').update({served_items:s,status:allDone?'partial':'cooking'}).eq('id',oid)
+  await loadOrders()
+}
+
+// ── 조리완료 → 타이머 시작 ──
+async function completeOrder(oid,tableId){
+  const end=new Date(Date.now()+2*60*60*1000).toISOString()
+  await Promise.all([
+    db.from('orders').update({status:'served'}).eq('id',oid),
+    db.from('tables').update({status:'occupied',timer_end_at:end}).eq('id',tableId)
+  ])
+  showToast('⏱️ 2시간 타이머 시작!'); await loadAll()
+}
+
+// ── 테이블 목록 ──
+function renderTableList(){
+  const c=document.getElementById('table-list')
+  c.innerHTML=tables.map(t=>{
+    const occ=t.status==='occupied'
+    const rem=t.timer_end_at?Math.max(0,Math.floor((new Date(t.timer_end_at)-new Date())/1000)):null
+    return `
+    <div class="tmgmt-card ${occ?'occupied':''}">
+      <div class="tmgmt-num">${t.table_number}번</div>
+      <div class="tmgmt-info">
+        <span class="badge ${occ?'badge-red':'badge-green'}">${occ?'이용중':'비어있음'}</span>
+        ${occ&&rem!==null?`<div class="tmgmt-timer" data-end="${t.timer_end_at}">${fmt(rem)}</div>`:''}
+      </div>
+      <div class="tmgmt-actions">
+        ${occ?`<button class="btn btn-red" onclick="clearTable(${t.id})">퇴실</button>`
+              :`<button class="btn btn-primary" onclick="seatTable(${t.id})">착석</button>`}
+      </div>
+    </div>`
+  }).join('')
+}
+
+async function seatTable(id){await db.from('tables').update({status:'occupied',timer_end_at:null}).eq('id',id);await loadTables()}
+async function clearTable(id){if(!confirm('퇴실 처리하시겠습니까?'))return;await db.from('tables').update({status:'empty',timer_end_at:null}).eq('id',id);await loadTables()}
+
+// ── 웨이팅 목록 ──
+function renderWaitingList(){
+  const c=document.getElementById('waiting-list')
+  if(!waitings.length){c.innerHTML='<div class="empty-state">대기 중인 팀이 없습니다.</div>';return}
+  c.innerHTML=waitings.map((w,i)=>`
+    <div class="witem">
+      <div class="wrank">${i+1}</div>
+      <div class="winfo"><div class="wphone">${w.phone}</div><div class="wsub">${w.party_size||1}명 · ${timeAgo(w.created_at)} 신청</div></div>
+      <div class="wactions">
+        <button class="btn btn-primary" onclick="callWaiting('${w.id}')">호출</button>
+        <button class="btn btn-outline" onclick="cancelWaiting('${w.id}')">취소</button>
+      </div>
+    </div>`).join('')
+}
+
+async function callWaiting(id){await db.from('waitings').update({status:'called'}).eq('id',id);showToast('📞 호출 처리됨');await loadWaitings()}
+async function cancelWaiting(id){if(!confirm('취소하시겠습니까?'))return;await db.from('waitings').update({status:'cancelled'}).eq('id',id);await loadWaitings()}
+
+// ════════════════════════════════════════
+// ── 통계 관리 ──
+// ════════════════════════════════════════
+
+async function loadStats(){
+  const wrap=document.getElementById('stats-wrap')
+  wrap.innerHTML='<div class="empty-state">집계 중...</div>'
+
+  // 리셋 시각 읽기 (없으면 태초부터)
+  const resetAt = localStorage.getItem(STATS_RESET_KEY) || '2000-01-01T00:00:00.000Z'
+  const resetDate = new Date(resetAt)
+
+  // payment_status='paid' 인 주문만 집계 (리셋 이후)
+  const {data, error} = await db.from('orders')
+    .select('*')
+    .eq('payment_status','paid')
+    .gte('payment_confirmed_at', resetAt)
+    .order('payment_confirmed_at')
+
+  if(error){ wrap.innerHTML=`<div class="empty-state">오류: ${error.message}</div>`; return }
+
+  const orders = data || []
+
+  // ── 메뉴별 집계 ──
+  const menuMap = {}   // { name: { qty, revenue, category } }
+  orders.forEach(o=>{
+    ;(o.items||[]).forEach(item=>{
+      if(!menuMap[item.name]) menuMap[item.name]={ qty:0, revenue:0, category: (MENU_META[item.name]||{}).category||'기타' }
+      menuMap[item.name].qty     += item.qty
+      menuMap[item.name].revenue += (item.price||0)*item.qty
+    })
+  })
+
+  // ── 카테고리별 집계 ──
+  const catMap = {}
+  Object.entries(menuMap).forEach(([name,v])=>{
+    if(!catMap[v.category]) catMap[v.category]={qty:0,revenue:0}
+    catMap[v.category].qty     += v.qty
+    catMap[v.category].revenue += v.revenue
+  })
+
+  const totalRevenue = Object.values(menuMap).reduce((s,v)=>s+v.revenue,0)
+  const totalQty     = Object.values(menuMap).reduce((s,v)=>s+v.qty,0)
+  const totalOrders  = orders.length
+
+  // 판매량 기준 정렬
+  const sorted = Object.entries(menuMap).sort((a,b)=>b[1].qty-a[1].qty)
+  const maxQty = sorted.length ? sorted[0][1].qty : 1
+
+  const resetLabel = localStorage.getItem(STATS_RESET_KEY)
+    ? new Date(resetAt).toLocaleString('ko-KR',{month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}) + ' 이후'
+    : '전체 기간'
+
+  // ── 렌더링 ──
+  wrap.innerHTML = `
+    <!-- KPI 카드 -->
+    <div class="stat-kpi-row">
+      <div class="stat-kpi">
+        <div class="kpi-num kpi-revenue">₩${totalRevenue.toLocaleString()}</div>
+        <div class="kpi-lbl">총 매출</div>
+      </div>
+      <div class="stat-kpi">
+        <div class="kpi-num kpi-orders">${totalOrders}</div>
+        <div class="kpi-lbl">이체완료 주문 수</div>
+      </div>
+      <div class="stat-kpi">
+        <div class="kpi-num kpi-items">${totalQty}</div>
+        <div class="kpi-lbl">총 판매 수량</div>
+      </div>
+    </div>
+
+    <!-- 리셋 정보 -->
+    <div class="stats-meta">
+      <div class="stats-meta-txt">
+        📅 집계 기간: <strong>${resetLabel}</strong><br>
+        <span style="font-size:11px;">초기화하면 이 시점부터 다시 집계됩니다.</span>
+      </div>
+      <button class="reset-btn" onclick="openStatsResetConfirm()">🔄 통계 초기화</button>
+    </div>
+
+    <!-- 메뉴별 판매 순위 -->
+    <div class="stats-section-title">📋 메뉴별 판매 현황 (판매량 순)</div>
+    ${sorted.length === 0
+      ? '<div class="empty-state" style="background:var(--surface);border-radius:14px;">아직 판매 데이터가 없습니다.</div>'
+      : `<div class="stats-table">
+          <div class="st-head">
+            <span>메뉴명</span>
+            <span>수량</span>
+            <span>순위</span>
+            <span>금액</span>
+          </div>
+          ${sorted.map(([name,v],idx)=>`
+            <div class="st-row">
+              <div>
+                <div class="st-name">${name}</div>
+                <div class="st-cat">${v.category}</div>
+                <div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(v.qty/maxQty*100)}%"></div></div>
+              </div>
+              <div class="st-qty">${v.qty}개</div>
+              <div class="st-rank">${idx+1}위</div>
+              <div class="st-amount">₩${v.revenue.toLocaleString()}</div>
+            </div>
+          `).join('')}
+        </div>`
+    }
+
+    <!-- 카테고리별 요약 -->
+    <div class="stats-section-title">🗂️ 카테고리별 매출</div>
+    <div class="cat-summary">
+      ${Object.entries(catMap).sort((a,b)=>b[1].revenue-a[1].revenue).map(([cat,v])=>`
+        <div class="cat-card">
+          <div class="cat-card-name">${cat}</div>
+          <div class="cat-card-amount">₩${v.revenue.toLocaleString()}</div>
+          <div class="cat-card-qty">${v.qty}개 판매</div>
+        </div>
+      `).join('')}
+    </div>
+  `
+}
+
+// ── 통계 초기화 모달 ──
+function openStatsResetConfirm(){ document.getElementById('stats-reset-confirm').classList.add('active') }
+function closeStatsResetConfirm(){ document.getElementById('stats-reset-confirm').classList.remove('active') }
+function doStatsReset(){
+  localStorage.setItem(STATS_RESET_KEY, new Date().toISOString())
+  closeStatsResetConfirm()
+  showToast('🔄 통계가 초기화되었습니다.')
+  loadStats()
+}
+
+// ── 타이머 ──
+function startTimers(){
+  if(timerInterval)clearInterval(timerInterval)
+  timerInterval=setInterval(()=>{
+    document.querySelectorAll('[data-end]').forEach(el=>{
+      const rem=Math.max(0,Math.floor((new Date(el.dataset.end)-new Date())/1000))
+      el.textContent=fmt(rem)
+      if(rem===0)el.style.color='var(--yellow)'
+    })
+  },1000)
+}
+
+function fmt(sec){
+  if(sec<=0)return'00:00'
+  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=sec%60
+  if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+  return`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+}
+function timeAgo(d){const m=Math.floor((new Date()-new Date(d))/60000);return m<1?'방금':`${m}분 전`}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000)}
-init()
+
+// 실시간
+db.channel('kds')
+  .on('postgres_changes',{event:'*',schema:'public',table:'orders'},loadOrders)
+  .on('postgres_changes',{event:'*',schema:'public',table:'tables'},loadTables)
+  .on('postgres_changes',{event:'*',schema:'public',table:'waitings'},loadWaitings)
+  .subscribe()
+
+loadAll()
 </script>
 </body>
 </html>
