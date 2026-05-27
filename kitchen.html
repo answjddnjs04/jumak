@@ -397,7 +397,7 @@ function renderPaidOrders(){
         ${expandItems(items).map(item=>`
           <div class="menu-item ${served[item.name]?'served':''}" onclick="toggleServed('${o.id}','${item.name}')">
             <div class="chk">${served[item.name]?'✓':''}</div>
-            <div class="mn">${item.name}</div>
+            <div class="mn">${item.label||item.name}</div>
             <div class="mq">×${item.qty}</div>
           </div>
         `).join('')}
