@@ -379,7 +379,8 @@ function renderPaidOrders(){
   if(!paidOrders.length){c.innerHTML='<div class="empty-state">이체 완료된 주문이 없습니다.</div>';return}
   c.innerHTML=paidOrders.map(o=>{
     const items=o.items||[], served=o.served_items||{}
-    const sc=items.filter(i=>served[i.name]).length, tot=items.length
+    const allKeys=allSubKeys(items)
+    const sc=allKeys.filter(k=>served[k]).length, tot=allKeys.length
     const allDone=sc===tot, pct=tot>0?Math.round(sc/tot*100):0
     const elapsed=Math.floor((new Date()-new Date(o.payment_confirmed_at||o.created_at))/60000)
     return `
@@ -460,7 +461,7 @@ async function doDeleteOrder(){
 async function toggleServed(oid,name){
   const o=paidOrders.find(x=>x.id===oid); if(!o) return
   const s={...(o.served_items||{})}; s[name]=!s[name]
-  const allDone=(o.items||[]).every(i=>s[i.name])
+  const allDone=allSubKeys(o.items||[]).every(k=>s[k])
   await db.from('orders').update({served_items:s,status:allDone?'partial':'cooking'}).eq('id',oid)
   await loadOrders()
 }
