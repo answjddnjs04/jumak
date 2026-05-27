@@ -289,6 +289,24 @@ const MENU_META = {
   '아이스 버킷':               {category:'음료'},
   '추억의 뽑기':               {category:'미니게임'},
 }
+const SET_EXPAND = {
+  '마라탕 & 꿔바로우':   ['마라탕 & 꿔바로우 → 마라탕', '마라탕 & 꿔바로우 → 꿔바로우'],
+  '마라샹궈 & 꿔바로우': ['마라샹궈 & 꿔바로우 → 마라샹궈', '마라샹궈 & 꿔바로우 → 꿔바로우'],
+}
+
+function expandItems(items){
+  const result=[]
+  items.forEach(item=>{
+    if(SET_EXPAND[item.name]){
+      SET_EXPAND[item.name].forEach(subName=>{
+        for(let i=0;i<item.qty;i++) result.push({name:subName, qty:1})
+      })
+    } else {
+      result.push(item)
+    }
+  })
+  return result
+}
 
 const STATS_RESET_KEY = 'lobogwan_stats_reset_at'
 
@@ -365,13 +383,14 @@ function renderPaidOrders(){
       <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
       <div class="prog-txt">${sc}/${tot} 서빙 완료</div>
       <div class="menu-list">
-        ${items.map(item=>`
+        ${expandItems(items).map(item=>`
           <div class="menu-item ${served[item.name]?'served':''}" onclick="toggleServed('${o.id}','${item.name}')">
             <div class="chk">${served[item.name]?'✓':''}</div>
             <div class="mn">${item.name}</div>
             <div class="mq">×${item.qty}</div>
           </div>
         `).join('')}
+
       </div>
       ${allDone?`<button class="btn btn-green complete-btn" onclick="completeOrder('${o.id}',${o.table_id})">✅ 다 나감 확인 → 타이머 시작</button>`:''}
     </div>`
