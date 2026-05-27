@@ -296,17 +296,28 @@ const SET_EXPAND = {
 
 function expandItems(items){
   const result=[]
+  let idx=0
   items.forEach(item=>{
     if(SET_EXPAND[item.name]){
-      SET_EXPAND[item.name].forEach(subName=>{
-        for(let i=0;i<item.qty;i++) result.push({name:subName, qty:1})
-      })
+      for(let q=0;q<item.qty;q++){
+        SET_EXPAND[item.name].forEach(subName=>{
+          result.push({name:`${subName}__${idx}`, label:subName, qty:1})
+          idx++
+        })
+      }
     } else {
-      result.push(item)
+      for(let q=0;q<item.qty;q++){
+        result.push({name:item.qty>1?`${item.name}__${idx}`:item.name, label:item.name, qty:1})
+        idx++
+      }
     }
   })
   return result
 }
+function allSubKeys(items){
+  return expandItems(items).map(i=>i.name)
+}
+
 
 const STATS_RESET_KEY = 'lobogwan_stats_reset_at'
 
